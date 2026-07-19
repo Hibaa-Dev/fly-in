@@ -151,21 +151,22 @@ class Display:
             else:
                 loc = [(conn.source, conn.target) for conn in self.conn if conn.name == zone]
                 src, trg = loc[0]
+
                 x1, y1 = self.graph.zone_lookup[src].x, self.graph.zone_lookup[src].y
                 x2, y2 = self.graph.zone_lookup[trg].x, self.graph.zone_lookup[trg].y
 
-                x = (x1 + x2) // 2
-                y = (y1 + y2) // 2
+                x = (x1 + x2) / 2   # true division, keeps the .5
+                y = (y1 + y2) / 2   # true division, keeps the .5
+
 
                 pos = self.screen_position(x, y)
 
-                pygame.draw.circle(self.screen, (135, 0, 0), pos, drone_radious)
-                pygame.draw.circle(self.screen, (0, 0, 0), pos, drone_radious, 2)
+            pygame.draw.circle(self.screen, (135, 0, 0), pos, drone_radious)
+            pygame.draw.circle(self.screen, (0, 0, 0), pos, drone_radious, 2)
 
-                label = self.font.render(drone_id, True, (0, 0, 0))
-                rect = label.get_rect(center=pos)
-                self.screen.blit(label, rect)
-
+            label = self.font.render(drone_id, True, (0, 0, 0))
+            rect = label.get_rect(center=pos)
+            self.screen.blit(label, rect)
 
     def _draw(self) -> None:
         # Create time obj to control FPS

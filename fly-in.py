@@ -25,7 +25,7 @@ paths = yen.find_shortets_paths()
 simulation = Simulation(mape_file['nb_drones'], graph, paths)
 simulation.simulation()
 
-print(simulation.frames)
+#print(simulation.frames)
 # ________________________________Display__________________________________
 disp = Display(graph, simulation.frames)
 disp._draw()

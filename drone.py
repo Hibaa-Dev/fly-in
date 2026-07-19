@@ -16,7 +16,7 @@ class Drone:
             start_zone: the zone from what the drone strat flying
         """
         self.id: str = id
-        self.current_zone: str | None= start_zone
+        self.current_zone: str | None = start_zone
         self.path: List[str] = path
         self.is_delivred: bool = False
         self.path_index: int = 0

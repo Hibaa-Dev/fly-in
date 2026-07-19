@@ -12,7 +12,7 @@ class Simulation:
         self.drones: List[Drone] = []
         self.paths: List[List[str]] = paths
         self.output: List[str] = []
-        self.frames: List[Dict[str, Union[Hub, Connection]]] = []
+        self.frames: List[Dict[str, str]] = []
 
         self.TERMINAL_COLORS: Dict[str, str] = {
             # Standard ANSI
@@ -166,29 +166,30 @@ class Simulation:
                         connection = conn_obj
                         break
 
-                if (connection and connection.can_move(turn)
+                    if (connection and connection.can_move(turn)
                         and self.can_move_to_zone(next_zone, occupied)):
                     
-                    target_hub = self.graph.zone_lookup[next_zone]
-                    travel_time = 2 if target_hub.zone_type == 'restricted' else 1
-                    
-                    # Launch drone
-                    drone.strat_transit(next_zone, connection, travel_time)
-                    connection.move_at_turn(turn)
-                    occupied[next_zone] = occupied.get(next_zone, 0) + 1
-                    
-                    # Log initial action
-                    if travel_time == 2:
-                        frame[drone.id] = connection.name
+                        target_hub = self.graph.zone_lookup[next_zone]
+                        travel_time = 2 if target_hub.zone_type == 'restricted' else 1
+    
+                        if travel_time == 1:
+                            # Normal move: resolves instantly, drone lands this same turn
+                            drone.move_forward()
+                            connection.move_at_turn(turn)
+                            occupied[next_zone] = occupied.get(next_zone, 0) + 1
+                            turn_moves.append(f"{drone.id}-{next_zone}")
+                        else:
+                            # Restricted move: genuinely spans 2 turns, use transit tracking
+                            drone.strat_transit(next_zone, connection, travel_time)
+                            connection.move_at_turn(turn)
+                            occupied[next_zone] = occupied.get(next_zone, 0) + 1
                         turn_moves.append(f"{drone.id}-{connection.name}")
-                    else:
-                        frame[drone.id] = next_zone
-                        turn_moves.append(f"{drone.id}-{next_zone}")
+
             for drone in self.drones:
                 if drone.is_in_transit:
                     frame[drone.id] = drone.transit_conn.name
                 else:
-                    frame[drone.id] = next_zone
+                    frame[drone.id] = drone.current_zone
 
             self.frames.append(frame)
 
