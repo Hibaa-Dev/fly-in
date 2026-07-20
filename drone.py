@@ -42,7 +42,7 @@ class Drone:
         if next_zone:
             self.path_index += 1
             self.current_zone = next_zone
-        if self.path_index + 1 == len(self.path) - 1:
+        if self.path_index == len(self.path) - 1:
             self.is_delivred = True
 
     def strat_transit(self, target_zone: str, connection: object, travel_time: int) -> None:
@@ -65,4 +65,3 @@ class Drone:
                 self.transit_conn = None
             return True
         return False
-

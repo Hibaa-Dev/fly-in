@@ -13,7 +13,7 @@ class Graph:
     def __init__(self) -> None:
         """Sets up an empty graph with all storage systems initialized."""
         self.zones: List[Hub] = []
-        self.conn: List[object] = []
+        self.conn: List[Connection] = []
         self.start_hub_name: str = ""
         self.end_hub_name: str = ""
         self.nb_drones: int = 0

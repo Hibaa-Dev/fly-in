@@ -13,14 +13,14 @@ class Display:
         pygame.display.set_caption("FLY-IN")
         self.font = pygame.font.Font(None, 15)
         self.frames = frames
-        self.zones: Hub = graph.zones
-        self.conn: Connection = graph.conn
+        self.zones: List[Hub] = graph.zones
+        self.conn: List[Connection] = graph.conn
         self.graph: Graph = graph
         self.running: bool = True
         self.WIDTH = 1800
         self.HEIFHT = 900
         self.scale = 150
-        self.time = 1000
+        self.end_delay = 1000
         self.offset_x = 100
         self.offset_y = 300
         self.compute_layout()
@@ -108,7 +108,7 @@ class Display:
         self.offset_x = window_center_x - (center_x * self.scale)
         self.offset_y = window_center_y + (center_y * self.scale)
 
-    def screen_position(self, x: int, y: int) -> Tuple[int, int]:
+    def screen_position(self, x: float, y: float) -> Tuple[int, int]:
         screen_x = self.offset_x + (x * self.scale)
         screen_y = self.offset_y - (y * self.scale)
         return (int(screen_x), int(screen_y))
@@ -155,13 +155,13 @@ class Display:
                 x1, y1 = self.graph.zone_lookup[src].x, self.graph.zone_lookup[src].y
                 x2, y2 = self.graph.zone_lookup[trg].x, self.graph.zone_lookup[trg].y
 
-                x = (x1 + x2) / 2   # true division, keeps the .5
-                y = (y1 + y2) / 2   # true division, keeps the .5
+                x = (x1 + x2) / 2
+                y = (y1 + y2) / 2
 
 
                 pos = self.screen_position(x, y)
 
-            pygame.draw.circle(self.screen, (135, 0, 0), pos, drone_radious)
+            pygame.draw.circle(self.screen, (255, 255, 215), pos, drone_radious)
             pygame.draw.circle(self.screen, (0, 0, 0), pos, drone_radious, 2)
 
             label = self.font.render(drone_id, True, (0, 0, 0))
@@ -169,39 +169,48 @@ class Display:
             self.screen.blit(label, rect)
 
     def _draw(self) -> None:
-        # Create time obj to control FPS
-        clock = pygame.time.Clock()
+        try:
+            background = pygame.image.load('map.webp')
+            background = pygame.transform.scale(background, (self.WIDTH, self.HEIFHT))
 
-        # get the time in ms from the pygame.init()
-        last_update: int = pygame.time.get_ticks()
+            # Create time obj to control FPS
+            clock = pygame.time.Clock()
 
-        fram_index: int = 0
-        
-        # 2. Load the background
-        background = pygame.image.load('map.webp')
-        background = pygame.transform.scale(background, (self.WIDTH, self.HEIFHT))
-        
-        while self.running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
+            # get the time in ms from the pygame.init()
+            last_update: int = pygame.time.get_ticks()
+
+            fram_index: int = 0
+            finished_at: int | None = None
+
+            while self.running:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self.running = False
+
+                now = pygame.time.get_ticks()
+                if (now - last_update >= self.end_delay and
+                        fram_index < len(self.frames) - 1):
+                    fram_index += 1
+                    last_update = now
+                    if fram_index == len(self.frames) - 1:
+                        finished_at = now
+
+                if (finished_at is not None and
+                        now - finished_at >= self.end_delay):
                     self.running = False
+                    continue
 
-            now = pygame.time.get_ticks()
-            if (now - last_update >= self.time and
-                    fram_index < len(self.frames) - 1):
-                fram_index += 1
-                last_update = now
+                self.screen.blit(background, (0, 0))
 
-            self.screen.blit(background, (0, 0))
+                self.draw_connection()
+                self.draw_zones()
 
-            self.draw_connection()
-            self.draw_zones()
+                if self.frames:
+                    self.draw_drones(self.frames[fram_index])
 
-            if self.frames:
-                self.draw_drones(self.frames[fram_index])
+                pygame.display.flip()
+                clock.tick(60)
 
-            pygame.display.flip()
-            clock.tick(60)
-    
-        pygame.quit()
-        sys.exit()
+            pygame.quit()
+        except KeyboardInterrupt:
+            sys.exit()

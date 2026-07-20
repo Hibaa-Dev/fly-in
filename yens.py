@@ -33,7 +33,11 @@ class Yen:
         self.graph: Graph = graph
         self.djikstra = Dijkstra(self.graph)
 
-    def find_shortets_paths(self, max_path: float = 2.0) -> List[List[str]]:
+    def find_shortets_paths(
+        self,
+        max_path: float = 2.0,
+        max_paths: int | None = None
+    ) -> List[List[str]]:
         """
         Executes Yen's algorithm to find and rank valid alternative paths.
 
@@ -41,6 +45,8 @@ class Yen:
             max_path (float): The maximum allowed cost multiplier relative to
                               the optimal path (e.g., 2.0 allows paths up to
                               twice the cost of the absolute shortest path).
+            max_paths: Maximum number of paths to return. Defaults to the
+                       number of drones in the graph.
 
         Returns:
             List[List[str]]: A list of unique paths (each path being a list of
@@ -57,13 +63,16 @@ class Yen:
         if not first_path:
             return []
 
+        if max_paths is None:
+            max_paths = self.graph.nb_drones
+
         best_distance = self.djikstra.distances[self.graph.end_hub_name]
         max_allowed_cost = best_distance * max_path
 
         A: List[List[str]] = [first_path]
         B: List[tuple[int | float, List[str]]] = []
 
-        while True:
+        while len(A) < max_paths:
             previous_path = A[-1]
             # find the spur node:
             for i in range(len(previous_path) - 1):
@@ -99,14 +108,14 @@ class Yen:
                         for hub in total_path)
 
                     extart_B = [items[1] for items in B]
-                    if total_path not in A and total_path not in extart_B:
+                    if (total_cost <= max_allowed_cost
+                            and total_path not in A
+                            and total_path not in extart_B):
                         B.append((total_cost, total_path))
 
             if not B:
                 break
             B.sort()
             best_cost, zone = B.pop(0)
-            if best_cost > max_allowed_cost:
-                break
             A.append(zone)
         return A

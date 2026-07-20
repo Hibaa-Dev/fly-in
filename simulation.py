@@ -80,8 +80,11 @@ class Simulation:
             target_color = f"{connection_color}{destication}{reset}"
 
         else:
-            hub = self.graph.zone_lookup[destication]
-            zone_color: str = self.get_color(hub.color)
+            if destication in self.graph.zone_lookup:
+                hub = self.graph.zone_lookup[destication]
+                zone_color: str = self.get_color(hub.color)
+            else:
+                zone_color = self.get_color('teal')
             target_color = f"{zone_color}{destication}{reset}"
 
         return f"{drone_color}-{target_color}"
@@ -125,23 +128,27 @@ class Simulation:
 
     def run(self) -> None:
         self.output = []
+        self.frames = []
         turn: int = 0
+        initial_frame = {
+            drone.id: drone.current_zone
+            for drone in self.drones
+            if drone.current_zone is not None
+        }
+        self.frames.append(initial_frame)
         
         while not all(drone.is_delivred for drone in self.drones):
             frame = {}
             turn_moves: List[str] = []
+            landed_this_turn: set[str] = set()
 
             # Phase 1: Land mid-flight drones
             for drone in self.drones:
-                # We track if it was a 2-turn restricted flight before ticking
-                was_restricted = (
-                    drone.is_in_transit and 
-                    getattr(self.graph.zone_lookup.get(drone.get_next_zone()), 'zone_type', '') == 'restricted'
-                )
-                
+                transit_target = drone.transit_target
+
                 if drone.tick_transit():
-                    # ONLY log the landing here if it spent consecutive turns in the air!
-                    if was_restricted:
+                    if not drone.is_in_transit and transit_target:
+                        landed_this_turn.add(drone.id)
                         turn_moves.append(f"{drone.id}-{drone.current_zone}")
             
             # Phase 2: Compute scoreboard & simulate departures
@@ -152,7 +159,9 @@ class Simulation:
                 
             # Phase 3: Move resting drones
             for drone in self.drones:
-                if drone.is_delivred or drone.is_in_transit or drone.current_zone is None:
+                if (drone.is_delivred or drone.is_in_transit
+                        or drone.current_zone is None
+                        or drone.id in landed_this_turn):
                     continue
 
                 next_zone = drone.get_next_zone()
@@ -166,23 +175,23 @@ class Simulation:
                         connection = conn_obj
                         break
 
-                    if (connection and connection.can_move(turn)
-                        and self.can_move_to_zone(next_zone, occupied)):
-                    
-                        target_hub = self.graph.zone_lookup[next_zone]
-                        travel_time = 2 if target_hub.zone_type == 'restricted' else 1
-    
-                        if travel_time == 1:
-                            # Normal move: resolves instantly, drone lands this same turn
-                            drone.move_forward()
-                            connection.move_at_turn(turn)
-                            occupied[next_zone] = occupied.get(next_zone, 0) + 1
-                            turn_moves.append(f"{drone.id}-{next_zone}")
-                        else:
-                            # Restricted move: genuinely spans 2 turns, use transit tracking
-                            drone.strat_transit(next_zone, connection, travel_time)
-                            connection.move_at_turn(turn)
-                            occupied[next_zone] = occupied.get(next_zone, 0) + 1
+                if (connection and connection.can_move(turn)
+                    and self.can_move_to_zone(next_zone, occupied)):
+
+                    target_hub = self.graph.zone_lookup[next_zone]
+                    travel_time = 1 if target_hub.zone_type == 'restricted' else 0
+
+                    if travel_time == 0:
+                        # Normal move: resolves instantly, drone lands this same turn
+                        drone.move_forward()
+                        connection.move_at_turn(turn)
+                        occupied[next_zone] = occupied.get(next_zone, 0) + 1
+                        turn_moves.append(f"{drone.id}-{next_zone}")
+                    else:
+                        # Restricted move: genuinely spans 2 turns, use transit tracking
+                        drone.strat_transit(next_zone, connection, travel_time)
+                        connection.move_at_turn(turn)
+                        occupied[next_zone] = occupied.get(next_zone, 0) + 1
                         turn_moves.append(f"{drone.id}-{connection.name}")
 
             for drone in self.drones:
@@ -198,7 +207,7 @@ class Simulation:
                 turn_moves.sort(key=lambda x: int(x.split("-")[0][1:]))
                 colored_moves: List[str] = []
                 for move in turn_moves:
-                    d_id, dest = move.split('-')
+                    d_id, dest = move.split('-', 1)
                     is_conn = '-' in dest
                     colored_moves.append(self.format_move(d_id, dest, is_conn))
                 self.output.append(" ".join(colored_moves))
@@ -220,4 +229,3 @@ class Simulation:
         self.assign_path()
         self.run()
         self.print_output()
-

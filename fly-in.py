@@ -19,7 +19,7 @@ graph.create_conn(mape_file)
 # -----------------Algo----------------------
 yen = Yen(graph)
 paths = yen.find_shortets_paths()
-
+print(paths)
 
 #----------------simulation-------------------
 simulation = Simulation(mape_file['nb_drones'], graph, paths)
