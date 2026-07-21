@@ -18,7 +18,10 @@ def count_turns(mape_file, paths):
     simulation = Simulation(mape_file['nb_drones'], graph, paths)
     simulation.create_drones()
     simulation.assign_path()
-    simulation.run()
+    try:
+        simulation.run()
+    except RuntimeError:
+        return float('inf')
     return len([line for line in simulation.output if line.strip()])
 
 
@@ -26,10 +29,10 @@ def select_fastest_paths(mape_file, paths):
     if not paths:
         return paths
 
-    best_paths = paths
-    best_turns = count_turns(mape_file, paths)
+    best_paths = paths[:1]
+    best_turns = count_turns(mape_file, best_paths)
 
-    for path_count in range(1, len(paths)):
+    for path_count in range(2, len(paths) + 1):
         candidate_paths = paths[:path_count]
         candidate_turns = count_turns(mape_file, candidate_paths)
         if candidate_turns < best_turns:

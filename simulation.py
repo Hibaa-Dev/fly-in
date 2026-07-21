@@ -153,12 +153,14 @@ class Simulation:
             
             # Phase 2: Compute scoreboard & simulate departures
             occupied = self.get_occupy_map()
-            for drone in self.drones:
-                if drone.current_zone and drone.get_next_zone():
-                    occupied[drone.current_zone] -= 1
                 
             # Phase 3: Move resting drones
-            for drone in self.drones:
+            drones_by_progress = sorted(
+                self.drones,
+                key=lambda item: item.path_index,
+                reverse=True
+            )
+            for drone in drones_by_progress:
                 if (drone.is_delivred or drone.is_in_transit
                         or drone.current_zone is None
                         or drone.id in landed_this_turn):
@@ -183,14 +185,20 @@ class Simulation:
 
                     if travel_time == 0:
                         # Normal move: resolves instantly, drone lands this same turn
+                        current_zone = drone.current_zone
                         drone.move_forward()
                         connection.move_at_turn(turn)
+                        if current_zone:
+                            occupied[current_zone] -= 1
                         occupied[next_zone] = occupied.get(next_zone, 0) + 1
                         turn_moves.append(f"{drone.id}-{next_zone}")
                     else:
                         # Restricted move: genuinely spans 2 turns, use transit tracking
+                        current_zone = drone.current_zone
                         drone.strat_transit(next_zone, connection, travel_time)
                         connection.move_at_turn(turn)
+                        if current_zone:
+                            occupied[current_zone] -= 1
                         occupied[next_zone] = occupied.get(next_zone, 0) + 1
                         turn_moves.append(f"{drone.id}-{connection.name}")
 
@@ -212,6 +220,8 @@ class Simulation:
                     colored_moves.append(self.format_move(d_id, dest, is_conn))
                 self.output.append(" ".join(colored_moves))
             else:
+                if not any(drone.is_in_transit for drone in self.drones):
+                    raise RuntimeError("Simulation deadlock: no drone can move")
                 # If no drones moved, we still record a blank line or empty state entry 
                 # so that turn indexing aligns perfectly with connection tracking!
                 self.output.append("")
