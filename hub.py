@@ -25,8 +25,8 @@ class Hub:
         """
         self.kind: str = kind
         self.name: str = name
-        self.x: int = x
-        self.y: int = y
+        self.x: int | float = x
+        self.y: int | float = y
         self.zone_type: str = zone_type
         self.max_drones: int = max_drones
         self.color: str | None = color

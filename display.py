@@ -8,8 +8,25 @@ import sys
 
 
 class Display:
+    """
+    Renders the simulation on screen using Pygame: draws the background map,
+    every zone as a colored circle, every connection as a line between zones,
+    and animates each drone's position frame-by-frame over time.
+    """
+    def __init__(self, graph: Graph, frames: List[Dict[str, str]]):
+        """
+        Sets up the Pygame window and precomputes everything needed to
+        render this specific map: the camera layout (scale + centering)
+        and the visual style (circle/line/font sizes), before building the
+        actual display window and font object that depend on those values.
 
-    def __init__(self, graph: Graph, frames):
+        Args:
+            graph: The Graph instance holding all zones and connections
+                for the map being displayed.
+            frames: The list of per-turn snapshots produced by the
+                simulation, where each frame maps a drone_id to either a
+                zone name (resting) or a connection name (in transit).
+        """
         pygame.init()
         pygame.display.set_caption("FLY-IN")
         self.font = pygame.font.Font(None, 15)
@@ -18,12 +35,12 @@ class Display:
         self.conn: List[Connection] = graph.conn
         self.graph: Graph = graph
         self.running: bool = True
-        self.WIDTH = 1800
-        self.HEIFHT = 900
-        self.end_delay = 1000
-        self.scale = 0
-        self.offset_x = 0
-        self.offset_y = 0
+        self.WIDTH: int = 1800
+        self.HEIFHT: int = 900
+        self.end_delay: int = 1000
+        self.scale: float = 0
+        self.offset_x: float = 0
+        self.offset_y: float = 0
         self.compute_layout()
         self.compute_visual_style()
         self.font = pygame.font.Font(None, self.font_size)
@@ -78,6 +95,17 @@ class Display:
         self.default_color = (255, 255, 255)  # White
 
     def compute_layout(self) -> None:
+        """
+        Calculates how to convert the map's abstract (x, y) graph-space
+        coordinates into actual pixel positions on the window.
+
+        Finds the bounding box containing every zone, derives a single
+        uniform scale (pixels per graph-unit) that fits that box inside
+        the window with some padding, then solves for the pixel offset
+        that places the bounding box's center exactly at the window's
+        center — so any map, big or small, ends up nicely centered and
+        scaled to fill the available space.
+        """
         # create bounding box
         xs = [zone.x for zone in self.zones]
         ys = [zone.y for zone in self.zones]
@@ -107,35 +135,73 @@ class Display:
         self.offset_y = window_center_y + (center_y * self.scale)
 
     def compute_visual_style(self) -> None:
+        """
+        Derives all visual sizing (zone circle radius, drone circle radius,
+        connection line width, font size) from the scale computed in
+        compute_layout, so that dense/large maps automatically shrink their
+        circles, lines, and text to avoid overlap, while spacious/small maps
+        keep a comfortable default size.
+
+        Also decides whether zone name labels should be drawn at all,
+        based on both how many zones exist and how large the circles ended
+        up being — since labels are unreadable clutter once a map gets too
+        big or too tightly packed.
+        """
+        # Zone circle radius
         self.zone_radius = max(10, min(40, int(self.scale * 0.28)))
+        # Drone circle radius
         self.drone_radius = max(6, min(20, int(self.zone_radius * 0.55)))
         self.line_width = max(1, min(5, int(self.zone_radius * 0.16)))
         self.font_size = max(10, min(18, int(self.zone_radius * 0.75)))
         self.show_zone_labels = (len(self.zones) <= 25 and
                                  self.zone_radius >= 14)
 
-    def screen_position(self, x: float, y: float) -> Tuple[int, int]:
+    def screen_position(self, x: float | int, y: float | int) -> Tuple[int, int]:
+        """
+        Converts a single graph-space coordinate into a pixel position on
+        the window, using the scale and offsets computed in compute_layout.
+
+        Args:
+            x: The graph-space x coordinate to convert.
+            y: The graph-space y coordinate to convert.
+
+        Returns:
+            The corresponding (screen_x, screen_y) pixel position, with the
+            y-axis flipped so that larger graph-space y values appear
+            higher on screen instead of lower.
+        """
         screen_x = self.offset_x + (x * self.scale)
         screen_y = self.offset_y - (y * self.scale)
         return (int(screen_x), int(screen_y))
 
-    def draw_connection(self):
+    def draw_connection(self) -> None:
+        """
+        Draws every connection in the graph as a straight line between the
+        screen positions of its two connected zones, using the connection
+        line color and the line width computed in compute_visual_style.
+        """
         for connection in self.conn:
-            source = connection.source
-            target = connection.target
+            source: str = connection.source
+            target: str = connection.target
 
-            src_hub = self.graph.zone_lookup[source]
-            trg_hub = self.graph.zone_lookup[target]
+            src_hub: Hub = self.graph.zone_lookup[source]
+            trg_hub: Hub = self.graph.zone_lookup[target]
 
-            start = self.screen_position(src_hub.x, src_hub.y)
-            end = self.screen_position(trg_hub.x, trg_hub.y)
+            start: Tuple[int, int] = self.screen_position(src_hub.x, src_hub.y)
+            end: Tuple[int, int] = self.screen_position(trg_hub.x, trg_hub.y)
 
-            color = self.COLOR_MAP['teal']
+            color: Tuple[int, int, int] = self.COLOR_MAP['teal']
 
             pygame.draw.line(self.screen, color, start, end,
                              width=self.line_width)
 
-    def draw_zones(self):
+    def draw_zones(self) -> None:
+        """
+        Draws every zone as a filled, outlined circle at its screen
+        position, colored according to the zone's assigned color (falling
+        back to white if none is set), and optionally draws the zone's
+        name centered on the circle if show_zone_labels allows it.
+        """
         for zone in self.zones:
             name = zone.name
             pos = self.screen_position(zone.x, zone.y)
@@ -150,7 +216,22 @@ class Display:
                 rect = label.get_rect(center=pos)
                 self.screen.blit(label, rect)
 
-    def draw_drones(self, frame) -> None:
+    def draw_drones(self, frame: Dict[str, str]) -> None:
+        """
+        Draws every drone for a single simulation frame at its current
+        position: either centered on a zone (if resting) or at the
+        midpoint of a connection (if mid-transit on a restricted zone).
+
+        When multiple drones share the exact same position, spreads them
+        outward in a small circle around that position so each drone
+        remains individually visible and readable instead of stacking
+        directly on top of one another.
+
+        Args:
+            frame: A single frame from the simulation's frame list, mapping
+                each drone_id to the name of the zone or connection it
+                currently occupies.
+        """
         occupied_positions: Dict[Tuple[int, int], int] = {}
         for drone_id, zone in frame.items():
             if zone in self.graph.zone_lookup:
@@ -192,6 +273,17 @@ class Display:
             self.screen.blit(label, rect)
 
     def _draw(self) -> None:
+        """
+        Runs the main animation loop: loads and scales the background map
+        image, then repeatedly redraws the window at up to 60 frames per
+        second, advancing to the next simulation frame roughly once every
+        end_delay milliseconds so the drone movement animates at a
+        controlled, human-watchable pace.
+
+        Keeps looping and rendering until the window is closed or the
+        final simulation frame has been shown for one full end_delay
+        period, then shuts Pygame down cleanly.
+        """
         try:
             background = pygame.image.load('map.webp')
             background = pygame.transform.scale(background,

@@ -67,7 +67,7 @@ class Graph:
             src: str = conn_rowhub_row.get('source')
             trg: str = conn_rowhub_row.get('target')
 
-            conn_obj: object = Connection(
+            conn_obj: Connection = Connection(
                 name=src + '_' + trg,
                 source=src,
                 target=trg,
@@ -84,3 +84,4 @@ class Graph:
         for trg in self.adjacency[src]:
             if trg[0] == target:
                 return trg[1]
+        return None

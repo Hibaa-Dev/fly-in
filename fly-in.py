@@ -52,6 +52,7 @@ graph = build_graph(mape_file)
 yen = Yen(graph)
 paths = yen.find_shortets_paths()
 paths = select_fastest_paths(mape_file, paths)
+
 #----------------simulation-------------------
 simulation = Simulation(mape_file['nb_drones'], graph, paths)
 simulation.simulation()
