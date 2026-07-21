@@ -6,13 +6,15 @@ from drone import Drone
 
 
 class Simulation:
-    def __init__(self, nb_drones: int, graph: Graph, paths: List[List[str]]):
+    def __init__(self, nb_drones: int, graph: Graph, paths: List[List[str]],
+                 record_frames: bool = True):
         self.nb_drones: int = nb_drones
         self.graph: Graph = graph
         self.drones: List[Drone] = []
         self.paths: List[List[str]] = paths
         self.output: List[str] = []
         self.frames: List[Dict[str, str]] = []
+        self.record_frames: bool = record_frames
 
         self.TERMINAL_COLORS: Dict[str, str] = {
             # Standard ANSI
@@ -62,6 +64,10 @@ class Simulation:
 
         self.default_color: str = '\033[37m'
         self.Drone_color: str = '\033[38;5;51m'
+
+    def max_allowed_turns(self) -> int:
+        longest_path = max((len(path) for path in self.paths), default=1)
+        return max(1000, self.nb_drones * longest_path * 4)
 
 # ------------------------get the color of the zone---------------------------------------
     def get_color(self, color_name: str) -> str:
@@ -130,14 +136,18 @@ class Simulation:
         self.output = []
         self.frames = []
         turn: int = 0
+        max_turns = self.max_allowed_turns()
         initial_frame = {
             drone.id: drone.current_zone
             for drone in self.drones
             if drone.current_zone is not None
         }
-        self.frames.append(initial_frame)
+        if self.record_frames:
+            self.frames.append(initial_frame)
         
         while not all(drone.is_delivred for drone in self.drones):
+            if turn >= max_turns:
+                raise RuntimeError("Simulation exceeded safe turn limit")
             frame = {}
             turn_moves: List[str] = []
             landed_this_turn: set[str] = set()
@@ -202,13 +212,14 @@ class Simulation:
                         occupied[next_zone] = occupied.get(next_zone, 0) + 1
                         turn_moves.append(f"{drone.id}-{connection.name}")
 
-            for drone in self.drones:
-                if drone.is_in_transit:
-                    frame[drone.id] = drone.transit_conn.name
-                else:
-                    frame[drone.id] = drone.current_zone
+            if self.record_frames:
+                for drone in self.drones:
+                    if drone.is_in_transit:
+                        frame[drone.id] = drone.transit_conn.name
+                    else:
+                        frame[drone.id] = drone.current_zone
 
-            self.frames.append(frame)
+                self.frames.append(frame)
 
             # Phase 4: Finalize turn tracking (Always append to keep turn counts synchronized!)
             if turn_moves:

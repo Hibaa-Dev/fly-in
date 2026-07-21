@@ -2,8 +2,11 @@ from parsing import Parser
 from yens import Yen
 from graph import Graph
 from simulation import Simulation
-from display import Display
 import sys
+
+
+MAX_DISPLAY_DRONES = 200
+MAX_DISPLAY_FRAMES = 500
 
 
 def build_graph(mape_file):
@@ -15,7 +18,8 @@ def build_graph(mape_file):
 
 def count_turns(mape_file, paths):
     graph = build_graph(mape_file)
-    simulation = Simulation(mape_file['nb_drones'], graph, paths)
+    simulation = Simulation(mape_file['nb_drones'], graph, paths,
+                            record_frames=False)
     simulation.create_drones()
     simulation.assign_path()
     try:
@@ -35,31 +39,42 @@ def select_fastest_paths(mape_file, paths):
     for path_count in range(2, len(paths) + 1):
         candidate_paths = paths[:path_count]
         candidate_turns = count_turns(mape_file, candidate_paths)
-        if candidate_turns < best_turns:
+        if candidate_turns == float('inf'):
+            continue
+        if candidate_turns <= best_turns:
             best_paths = candidate_paths
             best_turns = candidate_turns
 
     return best_paths
 
 
-# try:
-    #    --------check mape file--------------
-parser = Parser(sys.argv[1])
-mape_file = parser.check_input_file()
-# ----------------Validate--------------------
-graph = build_graph(mape_file)
-# -----------------Algo----------------------
-yen = Yen(graph)
-paths = yen.find_shortets_paths()
-paths = select_fastest_paths(mape_file, paths)
+def main():
+    # try:
+        #    --------check mape file--------------
+    parser = Parser(sys.argv[1])
+    mape_file = parser.check_input_file()
+    # ----------------Validate--------------------
+    graph = build_graph(mape_file)
+    # -----------------Algo----------------------
+    yen = Yen(graph)
+    paths = yen.find_shortets_paths()
+    paths = select_fastest_paths(mape_file, paths)
 
-#----------------simulation-------------------
-simulation = Simulation(mape_file['nb_drones'], graph, paths)
-simulation.simulation()
-#print(simulation.frames)
-# ________________________________Display__________________________________
-disp = Display(graph, simulation.frames)
-disp._draw()
+    #----------------simulation-------------------
+    record_frames = mape_file['nb_drones'] <= MAX_DISPLAY_DRONES
+    simulation = Simulation(mape_file['nb_drones'], graph, paths, record_frames)
+    simulation.simulation()
+    #print(simulation.frames)
+    # ________________________________Display__________________________________
+    if not record_frames or len(simulation.frames) > MAX_DISPLAY_FRAMES:
+        return
+    from display import Display
+    disp = Display(graph, simulation.frames)
+    disp._draw()
 
-# except Exception as e:
-#     print(e)
+    # except Exception as e:
+    #     print(e)
+
+
+if __name__ == "__main__":
+    main()

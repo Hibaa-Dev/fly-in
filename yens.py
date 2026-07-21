@@ -45,8 +45,8 @@ class Yen:
             max_path (float): The maximum allowed cost multiplier relative to
                               the optimal path (e.g., 2.0 allows paths up to
                               twice the cost of the absolute shortest path).
-            max_paths: Maximum number of paths to return. Defaults to the
-                       number of drones in the graph.
+            max_paths: Maximum number of paths to return. Defaults to a
+                       bounded value based on map size.
 
         Returns:
             List[List[str]]: A list of unique paths (each path being a list of
@@ -64,7 +64,7 @@ class Yen:
             return []
 
         if max_paths is None:
-            max_paths = self.graph.nb_drones
+            max_paths = min(self.graph.nb_drones, max(1, len(self.graph.zones)))
 
         best_distance = self.djikstra.distances[self.graph.end_hub_name]
         max_allowed_cost = best_distance * max_path
