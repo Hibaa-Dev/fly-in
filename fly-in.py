@@ -43,22 +43,18 @@ def select_fastest_paths(mape_file, paths):
 
 
 # try:
-#    --------check mape file--------------
+    #    --------check mape file--------------
 parser = Parser(sys.argv[1])
 mape_file = parser.check_input_file()
-
 # ----------------Validate--------------------
 graph = build_graph(mape_file)
-
 # -----------------Algo----------------------
 yen = Yen(graph)
 paths = yen.find_shortets_paths()
 paths = select_fastest_paths(mape_file, paths)
-
 #----------------simulation-------------------
 simulation = Simulation(mape_file['nb_drones'], graph, paths)
 simulation.simulation()
-
 #print(simulation.frames)
 # ________________________________Display__________________________________
 disp = Display(graph, simulation.frames)

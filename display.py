@@ -20,10 +20,10 @@ class Display:
         self.running: bool = True
         self.WIDTH = 1800
         self.HEIFHT = 900
-        self.scale = 150
         self.end_delay = 1000
-        self.offset_x = 100
-        self.offset_y = 300
+        self.scale = 0
+        self.offset_x = 0
+        self.offset_y = 0
         self.compute_layout()
         self.compute_visual_style()
         self.font = pygame.font.Font(None, self.font_size)
@@ -50,7 +50,6 @@ class Display:
             "light_magenta": (255, 0, 255),
             "light_cyan": (0, 255, 255),
 
-            # Colors seen in your maps (mapped from 256-color xterm index palette)
             "orange": (255, 135, 0),
             "purple": (175, 0, 255),
             "brown": (135, 95, 0),
@@ -74,30 +73,27 @@ class Display:
             "silver": (188, 188, 188),
             "aqua": (0, 255, 255),
 
-            # Special / fun names
             "rainbow": (0, 255, 255)}
 
         self.default_color = (255, 255, 255)  # White
-        self.Drone_color = (0, 255, 255)      # Bright Cyan (Aqua)
-
 
     def compute_layout(self) -> None:
+        # create bounding box
         xs = [zone.x for zone in self.zones]
         ys = [zone.y for zone in self.zones]
 
         min_x, max_x = min(xs), max(xs)
         min_y, max_y = min(ys), max(ys)
 
+        # the width and height of bounding box
         span_x = max(max_x - min_x, 1)
         span_y = max(max_y - min_y, 1)
 
+        # pixels per graph-unit
         padding = 100
         scale_x = (self.WIDTH - 2 * padding) / span_x
         scale_y = (self.HEIFHT - 2 * padding) / span_y
         self.scale = min(scale_x, scale_y)
-
-        graph_width = span_x * self.scale
-        graph_height = span_y * self.scale
 
         # Center of the bounding box in graph-space
         center_x = (min_x + max_x) / 2
@@ -107,7 +103,6 @@ class Display:
         window_center_x = self.WIDTH / 2
         window_center_y = self.HEIFHT / 2
 
-        # offset so that (center_x, center_y) maps exactly to (window_center_x, window_center_y)
         self.offset_x = window_center_x - (center_x * self.scale)
         self.offset_y = window_center_y + (center_y * self.scale)
 
@@ -116,7 +111,8 @@ class Display:
         self.drone_radius = max(6, min(20, int(self.zone_radius * 0.55)))
         self.line_width = max(1, min(5, int(self.zone_radius * 0.16)))
         self.font_size = max(10, min(18, int(self.zone_radius * 0.75)))
-        self.show_zone_labels = len(self.zones) <= 25 and self.zone_radius >= 14
+        self.show_zone_labels = (len(self.zones) <= 25 and
+                                 self.zone_radius >= 14)
 
     def screen_position(self, x: float, y: float) -> Tuple[int, int]:
         screen_x = self.offset_x + (x * self.scale)
@@ -139,12 +135,12 @@ class Display:
             pygame.draw.line(self.screen, color, start, end,
                              width=self.line_width)
 
-
     def draw_zones(self):
         for zone in self.zones:
             name = zone.name
             pos = self.screen_position(zone.x, zone.y)
-            color_key = zone.color.lower() if zone.color is not None else 'white'
+            color_key = (zone.color.lower()
+                         if zone.color is not None else 'white')
             color = self.COLOR_MAP.get(color_key, self.default_color)
             pygame.draw.circle(self.screen, color, pos, self.zone_radius)
             pygame.draw.circle(self.screen, (0, 0, 0), pos,
@@ -162,15 +158,17 @@ class Display:
                 x, y = hub.x, hub.y
                 pos = self.screen_position(x, y)
             else:
-                loc = [(conn.source, conn.target) for conn in self.conn if conn.name == zone]
+                loc = [(conn.source, conn.target)
+                       for conn in self.conn if conn.name == zone]
                 src, trg = loc[0]
 
-                x1, y1 = self.graph.zone_lookup[src].x, self.graph.zone_lookup[src].y
-                x2, y2 = self.graph.zone_lookup[trg].x, self.graph.zone_lookup[trg].y
+                x1, y1 = (self.graph.zone_lookup[src].x,
+                          self.graph.zone_lookup[src].y)
+                x2, y2 = (self.graph.zone_lookup[trg].x,
+                          self.graph.zone_lookup[trg].y)
 
                 x = (x1 + x2) / 2
                 y = (y1 + y2) / 2
-
 
                 pos = self.screen_position(x, y)
 
@@ -196,7 +194,8 @@ class Display:
     def _draw(self) -> None:
         try:
             background = pygame.image.load('map.webp')
-            background = pygame.transform.scale(background, (self.WIDTH, self.HEIFHT))
+            background = pygame.transform.scale(background,
+                                                (self.WIDTH, self.HEIFHT))
 
             # Create time obj to control FPS
             clock = pygame.time.Clock()

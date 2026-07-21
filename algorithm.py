@@ -75,8 +75,10 @@ class Dijkstra:
         heap = self.min_heap()
         while heap:
             node = heapq.heappop(heap)
+        # check if the new dist is shortest than the old
             if node[0] > self.distances[node[1]]:
                 continue
+        # check if we reach the end_hub
             if node[1] == self.graph.end_hub_name:
                 break
 
@@ -92,12 +94,18 @@ class Dijkstra:
                     continue
 
                 new_distance = node[0] + cost
+
+        # check if the current dist is less that the old to update the dist
                 if new_distance < self.distances[neighbor.name]:
+
                     self.distances[neighbor.name] = new_distance
                     self.previous[neighbor.name] = node[1]
                     heapq.heappush(heap, (new_distance, neighbor.name))
+
+        # check if we can't find any path
         if self.distances[self.graph.end_hub_name] == float('inf'):
             return []
+
         path: List[str] = []
         current: str | None = self.graph.end_hub_name
         while current:

@@ -313,7 +313,7 @@ class Parser:
                 raise ValueError(f"Error on line {nb_line}: Invalide metadata,"
                                  " correct syntaxe: [max_link_capacity=...]")
 
-            if not value.isdigit() or int(value) < 0:
+            if not value.isdigit() or int(value) <= 0:
                 raise ValueError(f"Error on line {nb_line}: max_link_capacity "
                                  "value must be positive integer")
             parsed_meta[key] = int(value)
