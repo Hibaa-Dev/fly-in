@@ -2,6 +2,7 @@ from typing import Tuple, List, Dict
 from hub import Hub
 from conn import Connection
 from graph import Graph
+import math
 import pygame
 import sys
 
@@ -24,6 +25,8 @@ class Display:
         self.offset_x = 100
         self.offset_y = 300
         self.compute_layout()
+        self.compute_visual_style()
+        self.font = pygame.font.Font(None, self.font_size)
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIFHT))
 
         self.COLOR_MAP: Dict[str, Tuple[int, int, int]] = {
@@ -108,6 +111,13 @@ class Display:
         self.offset_x = window_center_x - (center_x * self.scale)
         self.offset_y = window_center_y + (center_y * self.scale)
 
+    def compute_visual_style(self) -> None:
+        self.zone_radius = max(10, min(40, int(self.scale * 0.28)))
+        self.drone_radius = max(6, min(20, int(self.zone_radius * 0.55)))
+        self.line_width = max(1, min(5, int(self.zone_radius * 0.16)))
+        self.font_size = max(10, min(18, int(self.zone_radius * 0.75)))
+        self.show_zone_labels = len(self.zones) <= 25 and self.zone_radius >= 14
+
     def screen_position(self, x: float, y: float) -> Tuple[int, int]:
         screen_x = self.offset_x + (x * self.scale)
         screen_y = self.offset_y - (y * self.scale)
@@ -126,7 +136,8 @@ class Display:
 
             color = self.COLOR_MAP['teal']
 
-            pygame.draw.line(self.screen, color, start, end, width=5)
+            pygame.draw.line(self.screen, color, start, end,
+                             width=self.line_width)
 
 
     def draw_zones(self):
@@ -135,14 +146,16 @@ class Display:
             pos = self.screen_position(zone.x, zone.y)
             color_key = zone.color.lower() if zone.color is not None else 'white'
             color = self.COLOR_MAP.get(color_key, self.default_color)
-            label = self.font.render(name, True, (0, 0, 0))
-            rect = label.get_rect(center=pos)
-
-            pygame.draw.circle(self.screen, color, pos, 40)
-            self.screen.blit(label, rect)
+            pygame.draw.circle(self.screen, color, pos, self.zone_radius)
+            pygame.draw.circle(self.screen, (0, 0, 0), pos,
+                               self.zone_radius, 1)
+            if self.show_zone_labels:
+                label = self.font.render(name, True, (0, 0, 0))
+                rect = label.get_rect(center=pos)
+                self.screen.blit(label, rect)
 
     def draw_drones(self, frame) -> None:
-        drone_radious = 20
+        occupied_positions: Dict[Tuple[int, int], int] = {}
         for drone_id, zone in frame.items():
             if zone in self.graph.zone_lookup:
                 hub = self.graph.zone_lookup[zone]
@@ -161,8 +174,20 @@ class Display:
 
                 pos = self.screen_position(x, y)
 
-            pygame.draw.circle(self.screen, (255, 255, 215), pos, drone_radious)
-            pygame.draw.circle(self.screen, (0, 0, 0), pos, drone_radious, 2)
+            stack_index = occupied_positions.get(pos, 0)
+            occupied_positions[pos] = stack_index + 1
+            if stack_index > 0:
+                angle = stack_index * 2 * math.pi / 8
+                spread = self.drone_radius * 1.2
+                pos = (
+                    int(pos[0] + math.cos(angle) * spread),
+                    int(pos[1] + math.sin(angle) * spread)
+                )
+
+            pygame.draw.circle(self.screen, (255, 255, 215), pos,
+                               self.drone_radius)
+            pygame.draw.circle(self.screen, (0, 0, 0), pos,
+                               self.drone_radius, 2)
 
             label = self.font.render(drone_id, True, (0, 0, 0))
             rect = label.get_rect(center=pos)
