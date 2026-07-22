@@ -3,6 +3,10 @@ from hub import Hub
 from conn import Connection
 from graph import Graph
 import math
+import os
+
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
+
 import pygame
 import sys
 

@@ -1,44 +1,47 @@
-from parsing import Parser
-from yens import Yen
-from graph import Graph
-from simulation import Simulation
 import sys
+from parsing import Parser
+from graph import Graph
+from yens import Yen
+from simulation import Simulation
+from display import Display
 
 
-MAX_DISPLAY_DRONES = 200
-MAX_DISPLAY_FRAMES = 500
-
-
-def build_graph(mape_file):
+def build_graph(mape_file: dict) -> Graph:
     graph = Graph()
     graph.create_zone(mape_file)
     graph.create_conn(mape_file)
     return graph
 
 
-def count_turns(mape_file, paths):
-    graph = build_graph(mape_file)
-    simulation = Simulation(mape_file['nb_drones'], graph, paths,
-                            record_frames=False)
-    simulation.create_drones()
-    simulation.assign_path()
-    try:
-        simulation.run()
-    except RuntimeError:
-        return float('inf')
-    return len([line for line in simulation.output if line.strip()])
+def select_working_paths(mape_file, graph_builder, paths):
+    """Try increasing numbers of candidate paths; keep the subset that
+    completes in the fewest turns without deadlocking.
 
-
-def select_fastest_paths(mape_file, paths):
+    Each candidate is tested using a lightweight simulation run (no
+    frame recording, no colored output string building) so that testing
+    all K candidates stays cheap even with a large number of drones —
+    only the real, final simulation records full frames/output.
+    """
     if not paths:
         return paths
 
+    def count_turns(candidate_paths):
+        test_graph = graph_builder()
+        test_sim = Simulation(test_graph, candidate_paths, lightweight=True)
+        test_sim.create_drones()
+        test_sim.assign_path()
+        try:
+            test_sim.run()
+        except RuntimeError:
+            return float('inf')
+        return test_sim.total_turns
+
     best_paths = paths[:1]
-    best_turns = count_turns(mape_file, best_paths)
+    best_turns = count_turns(best_paths)
 
     for path_count in range(2, len(paths) + 1):
         candidate_paths = paths[:path_count]
-        candidate_turns = count_turns(mape_file, candidate_paths)
+        candidate_turns = count_turns(candidate_paths)
         if candidate_turns == float('inf'):
             continue
         if candidate_turns <= best_turns:
@@ -49,31 +52,29 @@ def select_fastest_paths(mape_file, paths):
 
 
 def main():
-    # try:
-        #    --------check mape file--------------
+    if len(sys.argv) < 2:
+        print("Usage: python main.py <map_file.txt>")
+        return
+
+    # 1. Parsing
     parser = Parser(sys.argv[1])
     mape_file = parser.check_input_file()
-    # ----------------Validate--------------------
+
+    # 2. Build Graph
     graph = build_graph(mape_file)
-    # -----------------Algo----------------------
+
+    # 3. Yen's K-Shortest Paths (runs Dijkstra internally)
     yen = Yen(graph)
     paths = yen.find_shortets_paths()
-    paths = select_fastest_paths(mape_file, paths)
+    paths = select_working_paths(mape_file, lambda: build_graph(mape_file), paths)
 
-    #----------------simulation-------------------
-    record_frames = mape_file['nb_drones'] <= MAX_DISPLAY_DRONES
-    simulation = Simulation(mape_file['nb_drones'], graph, paths, record_frames)
-    simulation.simulation()
-    #print(simulation.frames)
-    # ________________________________Display__________________________________
-    if not record_frames or len(simulation.frames) > MAX_DISPLAY_FRAMES:
-        return
-    from display import Display
-    disp = Display(graph, simulation.frames)
+    # 4. Run Simulation (always records frames, for any number of drones)
+    sim = Simulation(graph, paths)
+    sim.simulation()
+
+    # 5. Render Pygame Display
+    disp = Display(graph, sim.frames)
     disp._draw()
-
-    # except Exception as e:
-    #     print(e)
 
 
 if __name__ == "__main__":

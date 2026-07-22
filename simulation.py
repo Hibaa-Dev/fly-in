@@ -1,20 +1,24 @@
-from typing import Dict, List, Union
-from hub import Hub
-from conn import Connection
+from typing import Dict, List
 from graph import Graph
 from drone import Drone
 
 
 class Simulation:
-    def __init__(self, nb_drones: int, graph: Graph, paths: List[List[str]],
-                 record_frames: bool = True):
-        self.nb_drones: int = nb_drones
+    def __init__(self, graph: Graph, paths: List[List[str]], lightweight: bool = False):
         self.graph: Graph = graph
+        self.nb_drones: int = graph.nb_drones
         self.drones: List[Drone] = []
         self.paths: List[List[str]] = paths
         self.output: List[str] = []
         self.frames: List[Dict[str, str]] = []
-        self.record_frames: bool = record_frames
+        self.total_turns: int = 0
+
+        # When True, skips frame recording and colored-output string
+        # building entirely — used only by internal dry-run testing
+        # (e.g. select_working_paths) where we just need a turn count,
+        # not the full visual output. The real/final simulation always
+        # runs with lightweight=False so frames are always recorded.
+        self.lightweight: bool = lightweight
 
         self.TERMINAL_COLORS: Dict[str, str] = {
             # Standard ANSI
@@ -66,6 +70,13 @@ class Simulation:
         self.Drone_color: str = '\033[38;5;51m'
 
     def max_allowed_turns(self) -> int:
+        """
+        Safety net against genuine deadlocks/infinite loops in the movement
+        logic — NOT a performance limit. Scales with the number of drones
+        and the longest assigned path, so it stays generous even for very
+        large simulations; it only ever trips if drones truly can never
+        finish moving (a bug), not because there are simply a lot of them.
+        """
         longest_path = max((len(path) for path in self.paths), default=1)
         return max(1000, self.nb_drones * longest_path * 4)
 
@@ -94,7 +105,7 @@ class Simulation:
             target_color = f"{zone_color}{destication}{reset}"
 
         return f"{drone_color}-{target_color}"
-        
+
 # ---------------------------create Drone objects--------------------------------------------
     def create_drones(self) -> None:
         for i in range(0, self.nb_drones):
@@ -142,9 +153,9 @@ class Simulation:
             for drone in self.drones
             if drone.current_zone is not None
         }
-        if self.record_frames:
+        if not self.lightweight:
             self.frames.append(initial_frame)
-        
+
         while not all(drone.is_delivred for drone in self.drones):
             if turn >= max_turns:
                 raise RuntimeError("Simulation exceeded safe turn limit")
@@ -160,10 +171,10 @@ class Simulation:
                     if not drone.is_in_transit and transit_target:
                         landed_this_turn.add(drone.id)
                         turn_moves.append(f"{drone.id}-{drone.current_zone}")
-            
+
             # Phase 2: Compute scoreboard & simulate departures
             occupied = self.get_occupy_map()
-                
+
             # Phase 3: Move resting drones
             drones_by_progress = sorted(
                 self.drones,
@@ -188,7 +199,7 @@ class Simulation:
                         break
 
                 if (connection and connection.can_move(turn)
-                    and self.can_move_to_zone(next_zone, occupied)):
+                        and self.can_move_to_zone(next_zone, occupied)):
 
                     target_hub = self.graph.zone_lookup[next_zone]
                     travel_time = 1 if target_hub.zone_type == 'restricted' else 0
@@ -212,7 +223,7 @@ class Simulation:
                         occupied[next_zone] = occupied.get(next_zone, 0) + 1
                         turn_moves.append(f"{drone.id}-{connection.name}")
 
-            if self.record_frames:
+            if not self.lightweight:
                 for drone in self.drones:
                     if drone.is_in_transit:
                         frame[drone.id] = drone.transit_conn.name
@@ -223,21 +234,25 @@ class Simulation:
 
             # Phase 4: Finalize turn tracking (Always append to keep turn counts synchronized!)
             if turn_moves:
-                turn_moves.sort(key=lambda x: int(x.split("-")[0][1:]))
-                colored_moves: List[str] = []
-                for move in turn_moves:
-                    d_id, dest = move.split('-', 1)
-                    is_conn = '-' in dest
-                    colored_moves.append(self.format_move(d_id, dest, is_conn))
-                self.output.append(" ".join(colored_moves))
+                if not self.lightweight:
+                    turn_moves.sort(key=lambda x: int(x.split("-")[0][1:]))
+                    colored_moves: List[str] = []
+                    for move in turn_moves:
+                        d_id, dest = move.split('-', 1)
+                        is_conn = '-' in dest
+                        colored_moves.append(self.format_move(d_id, dest, is_conn))
+                    self.output.append(" ".join(colored_moves))
             else:
                 if not any(drone.is_in_transit for drone in self.drones):
                     raise RuntimeError("Simulation deadlock: no drone can move")
-                # If no drones moved, we still record a blank line or empty state entry 
+                # If no drones moved, we still record a blank line or empty state entry
                 # so that turn indexing aligns perfectly with connection tracking!
-                self.output.append("")
-            
+                if not self.lightweight:
+                    self.output.append("")
+
             turn += 1
+
+        self.total_turns = turn
 
     def print_output(self) -> None:
         # Only print lines that actually contain movements, omitting stationary turns
