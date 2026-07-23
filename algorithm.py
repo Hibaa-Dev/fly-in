@@ -1,6 +1,7 @@
 from typing import Dict, List, Tuple
 from graph import Graph
 from hub import Hub
+from conn import Connection
 import heapq
 
 
@@ -27,7 +28,7 @@ class Dijkstra:
                 the start.
         """
         self.zones: List[Hub] = graph.zones
-        self.adjacency: Dict[str, List[Tuple[str, object]]] = graph.adjacency
+        self.adjacency: Dict[str, List[Tuple[str, Connection]]] = graph.adjacency
         self.graph: Graph = graph
         self.previous: Dict[str, str | None] = {}
         self.distances: Dict[str, int | float] = {}
@@ -72,6 +73,7 @@ class Dijkstra:
         Returns:
             A list of zone name strings representing the chosen route.
         """
+        cost: int | float = 0
         heap = self.min_heap()
         while heap:
             node = heapq.heappop(heap)

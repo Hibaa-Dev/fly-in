@@ -34,13 +34,13 @@ class Parser:
         """
         self.file: str = input_file
         self.map: Dict[str, Any] = {
-            'nb_drones': 0,
-            'hubs': [],
-            'connections': []
+            "nb_drones": 0,
+            "hubs": [],
+            "connections": [],
         }
         self.start_hub_counter: int = 0
         self.end_hub_counter: int = 0
-        self.prefix: List[str] = ['start_hub', 'end_hub', 'hub', 'connection']
+        self.prefix: List[str] = ["start_hub", "end_hub", "hub", "connection"]
         self.zone_name: List[str] = []
         self.coordinate: List[str] = []
         self.connections: List[set[str | Any]] = []
@@ -51,9 +51,9 @@ class Parser:
             r"(?:\s+(\[(?P<attr>[^\]]*)\]))?$"
         )
         self.conn_pattern: re.Pattern[str] = re.compile(
-                r"^(?P<source>[^\s-]+)-"
-                r"(?P<target>[^\s-]+)"
-                r"(?:\s+(\[(?P<metadata>[^\]]*)\]))?$"
+            r"^(?P<source>[^\s-]+)-"
+            r"(?P<target>[^\s-]+)"
+            r"(?:\s+(\[(?P<metadata>[^\]]*)\]))?$"
         )
 
     def check_first_line(self, lines: Iterator[Tuple[int, str]]) -> None:
@@ -77,19 +77,23 @@ class Parser:
         is_empty = True
         for nb_line, line in lines:
             line = line.strip()
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 continue
             is_empty = False
-            if line.count(':') != 1:
-                raise ValueError(f"Error on line {nb_line}: The first "
-                                 "line must define the number of drones using "
-                                 "nb_drones: <positive_integer>")
+            if line.count(":") != 1:
+                raise ValueError(
+                    f"Error on line {nb_line}: The first "
+                    "line must define the number of drones using "
+                    "nb_drones: <positive_integer>"
+                )
             key, value = line.split(":")
             key, value = key.strip(), value.strip()
             if key != "nb_drones" or not value.isdigit() or int(value) <= 0:
-                raise ValueError(f"Error on line {nb_line}: The first "
-                                 "line must define the number of drones using"
-                                 "nb_drones: <positive_integer>")
+                raise ValueError(
+                    f"Error on line {nb_line}: The first "
+                    "line must define the number of drones using"
+                    "nb_drones: <positive_integer>"
+                )
             self.map["nb_drones"] = int(value)
             break
         if is_empty:
@@ -113,14 +117,16 @@ class Parser:
         if key == "start_hub":
             self.start_hub_counter += 1
             if self.start_hub_counter != 1:
-                raise ValueError(f"Error on line {nb_line}: it must be "
-                                 "exactly one start_hub")
+                raise ValueError(
+                    f"Error on line {nb_line}: Must be exactly one start_hub"
+                )
 
         if key == "end_hub":
             self.end_hub_counter += 1
             if self.end_hub_counter != 1:
-                raise ValueError(f"Error on line {nb_line}: it must be "
-                                 "exactly one end_hub")
+                raise ValueError(
+                    f"Error on line {nb_line}: Must be exactly one end_hub"
+                )
 
     def check_hub(self, value: str, nb_line: int) -> Dict[str, Any]:
         """Deconstructs and validates structural hub parameters
@@ -148,19 +154,23 @@ class Parser:
         info = re.fullmatch(self.hub_pattern, value)
         if not info:
             raise ValueError(f"Error on line {nb_line}: Invalid syntaxe!")
-        if info.group('name') in self.zone_name:
-            raise ValueError(f"Error on line {nb_line}: Zone name must be "
-                             "unique")
-        self.zone_name.append(info.group('name'))
-        coordinate = info.group('x') + ', ' + info.group('y')
+        if info.group("name") in self.zone_name:
+            raise ValueError(
+                f"Error on line {nb_line}: Zone name must be unique",
+            )
+        self.zone_name.append(info.group("name"))
+        coordinate = info.group("x") + ", " + info.group("y")
         if coordinate in self.coordinate:
             raise ValueError(f"Error on line {nb_line}: Duplicated coordinate")
         self.coordinate.append(coordinate)
 
         return info.groupdict()
 
-    def check_hub_metadata(self, metadata: str,
-                           nb_line: int) -> Dict[str, Any]:
+    def check_hub_metadata(
+        self,
+        metadata: str,
+        nb_line: int,
+    ) -> Dict[str, Any]:
         """Parses and sanitizes explicit configuration attributes
             enclosed in hub brackets.
 
@@ -186,39 +196,49 @@ class Parser:
                 negative values, or duplicated parameter labels.
         """
 
-        zone_type: List[str] = ['normal', 'blocked', 'restricted', 'priority']
+        zone_type: List[str] = ["normal", "blocked", "restricted", "priority"]
         parsed_meta: Dict[str, Any] = {}
 
-        clean_metadata = re.sub(r'\s*=\s*', '=', metadata)
+        clean_metadata = re.sub(r"\s*=\s*", "=", metadata)
         for data in clean_metadata.split():
-            if data.count('=') != 1:
-                raise ValueError(f"Error on line {nb_line}: Invalide "
-                                 "metadata, e.g [zone=... color=...]")
+            if data.count("=") != 1:
+                raise ValueError(
+                    f"Error on line {nb_line}: Invalide "
+                    "metadata, e.g [zone=... color=...]"
+                )
 
-            key, value = data.split('=')
+            key, value = data.split("=")
             key, value = key.strip(), value.strip()
             if key in parsed_meta:
-                raise ValueError(f"Error on line {nb_line}: Duplicate "
-                                 f"attribute definition'{key}' detected inside"
-                                 " brackets")
+                raise ValueError(
+                    f"Error on line {nb_line}: Duplicate "
+                    f"attribute definition'{key}' detected inside"
+                    " brackets"
+                )
 
-            if key not in ['zone', 'color', 'max_drones']:
-                raise ValueError(f"Error on line {nb_line}: Invalid metadata "
-                                 "attribute")
+            if key not in ["zone", "color", "max_drones"]:
+                raise ValueError(
+                    f"Error on line {nb_line}: Invalid metadata " "attribute"
+                )
 
-            if key == 'zone':
+            if key == "zone":
                 if value not in zone_type:
-                    raise ValueError(f"Error on line {nb_line}: Invalid zone "
-                                     "type")
+                    raise ValueError(
+                        f"Error on line {nb_line}: Invalid zone type",
+                    )
 
-            if key == 'color':
+            if key == "color":
                 if len(value.split()) != 1:
-                    raise ValueError(f"Error on line {nb_line}: color must be "
-                                     "a valid single-word strings")
-            if key == 'max_drones':
+                    raise ValueError(
+                        f"Error on line {nb_line}: color must be "
+                        "a valid single-word strings"
+                    )
+            if key == "max_drones":
                 if not value.isdigit() or int(value) <= 0:
-                    raise ValueError(f"Error on line {nb_line}: max_drones "
-                                     "value must be positive integer")
+                    raise ValueError(
+                        f"Error on line {nb_line}: max_drones "
+                        "value must be positive integer"
+                    )
                 parsed_meta[key] = int(value)
                 continue
 
@@ -251,25 +271,33 @@ class Parser:
 
         info = re.fullmatch(self.conn_pattern, value)
         if not info:
-            raise ValueError(f"Error on line {nb_line}: Invalid connection "
-                             "syntaxe")
+            raise ValueError(
+                f"Error on line {nb_line}: Invalid connection syntaxe",
+            )
         source = info.group("source")
         target = info.group("target")
         if source not in self.zone_name or target not in self.zone_name:
-            raise ValueError(f"Error on line {nb_line}: connection must link "
-                             "only previously defined zones")
-        if info.group('source') == info.group('target'):
+            raise ValueError(
+                f"Error on line {nb_line}: connection must link "
+                "only previously defined zones"
+            )
+        if info.group("source") == info.group("target"):
             raise ValueError(f"Error on line {nb_line}: Invalid connection")
-        conn = {info.group('source'), info.group("target")}
+        conn = {info.group("source"), info.group("target")}
         if conn in self.connections:
-            raise ValueError(f"Error on line {nb_line}: The same connection "
-                             "must not appear more than once ")
+            raise ValueError(
+                f"Error on line {nb_line}: The same connection "
+                "must not appear more than once "
+            )
         self.connections.append(conn)
 
         return info.groupdict()
 
-    def check_conn_metadata(self, metadata: str,
-                            nb_line: int) -> Dict[str, Any]:
+    def check_conn_metadata(
+        self,
+        metadata: str,
+        nb_line: int,
+    ) -> Dict[str, Any]:
         """Parses and validates the bracketed metadata of a connection line.
 
         Expects space-separated ``key=value`` pairs. The only recognized
@@ -294,28 +322,36 @@ class Parser:
 
         parsed_meta: Dict[str, Any] = {}
 
-        clean_metadata = re.sub(r'\s*=\s*', '=', metadata)
+        clean_metadata = re.sub(r"\s*=\s*", "=", metadata)
         for data in clean_metadata.split():
 
-            if data.count('=') != 1:
-                raise ValueError(f"Error on line {nb_line}: Invalid metadata, "
-                                 "correct syntaxe: [max_link_capacity=...]")
+            if data.count("=") != 1:
+                raise ValueError(
+                    f"Error on line {nb_line}: Invalid metadata, "
+                    "correct syntaxe: [max_link_capacity=...]"
+                )
 
-            key, value = data.split('=')
+            key, value = data.split("=")
             key, value = key.strip(), value.strip()
 
             if key in parsed_meta:
-                raise ValueError(f"Error on line {nb_line}: Duplicate "
-                                 f"attribute definition '{key}' detected "
-                                 "inside brackets")
+                raise ValueError(
+                    f"Error on line {nb_line}: Duplicate "
+                    f"attribute definition '{key}' detected "
+                    "inside brackets"
+                )
 
-            if key != 'max_link_capacity':
-                raise ValueError(f"Error on line {nb_line}: Invalide metadata,"
-                                 " correct syntaxe: [max_link_capacity=...]")
+            if key != "max_link_capacity":
+                raise ValueError(
+                    f"Error on line {nb_line}: Invalide metadata,"
+                    " correct syntaxe: [max_link_capacity=...]"
+                )
 
             if not value.isdigit() or int(value) <= 0:
-                raise ValueError(f"Error on line {nb_line}: max_link_capacity "
-                                 "value must be positive integer")
+                raise ValueError(
+                    f"Error on line {nb_line}: max_link_capacity "
+                    "value must be positive integer"
+                )
             parsed_meta[key] = int(value)
 
         return parsed_meta
@@ -332,47 +368,56 @@ class Parser:
             self.check_first_line(lines)
             for nb_line, line in lines:
                 line = line.strip()
-                if not line or line.startswith('#'):
+                if not line or line.startswith("#"):
                     continue
-                if line.count(':') != 1:
-                    raise ValueError(f"Error on line {nb_line}: Invalid "
-                                     "syntaxe!")
-                key, value = line.split(':')
+                if line.count(":") != 1:
+                    raise ValueError(
+                        f"Error on line {nb_line}: Invalid syntaxe!",
+                    )
+                key, value = line.split(":")
                 key, value = key.strip(), value.strip()
                 if key not in self.prefix:
-                    raise ValueError(f"Error on line {nb_line}: Unknown "
-                                     "prefix")
+                    raise ValueError(
+                        f"Error on line {nb_line}: Unknown prefix",
+                    )
 
                 self.check_start_end_hub(key, nb_line)
 
-                if key in ('hub', 'start_hub', 'end_hub'):
+                if key in ("hub", "start_hub", "end_hub"):
                     hub_data = self.check_hub(value, nb_line)
                     hub_record = {
-                        'type': key,
-                        'zone_name': hub_data['name'],
-                        'x': int(hub_data['x']),
-                        'y': int(hub_data['y']),
-                        'metadata': {'zone': 'normal', 'color': None,
-                                     'max_drones': 1}
+                        "type": key,
+                        "zone_name": hub_data["name"],
+                        "x": int(hub_data["x"]),
+                        "y": int(hub_data["y"]),
+                        "metadata": {
+                            "zone": "normal",
+                            "color": None,
+                            "max_drones": 1,
+                        },
                     }
-                    if hub_data['attr']:
-                        hub_record['metadata'].update(self.check_hub_metadata(
-                            hub_data['attr'], nb_line))
-                    self.map['hubs'].append(hub_record)
+                    if hub_data["attr"]:
+                        hub_record["metadata"].update(
+                            self.check_hub_metadata(hub_data["attr"], nb_line)
+                        )
+                    self.map["hubs"].append(hub_record)
 
-                elif key == 'connection':
+                elif key == "connection":
                     conn_data = self.check_conn(value, nb_line)
                     conn_record = {
-                        'source': conn_data['source'],
-                        'target': conn_data['target'],
-                        'metadata': {'max_link_capacity': 1}
+                        "source": conn_data["source"],
+                        "target": conn_data["target"],
+                        "metadata": {"max_link_capacity": 1},
                     }
-                    if conn_data['metadata']:
-                        conn_record['metadata'] = self.check_conn_metadata(
-                            conn_data['metadata'], nb_line)
-                    self.map['connections'].append(conn_record)
+                    if conn_data["metadata"]:
+                        conn_record["metadata"] = self.check_conn_metadata(
+                            conn_data["metadata"], nb_line
+                        )
+                    self.map["connections"].append(conn_record)
 
             if self.start_hub_counter != 1 or self.end_hub_counter != 1:
-                raise ValueError("Error: There must be exactly one start_hub: "
-                                 "zone and one end_hub: zone.")
+                raise ValueError(
+                    "Error: There must be exactly one start_hub: "
+                    "zone and one end_hub: zone."
+                )
             return self.map

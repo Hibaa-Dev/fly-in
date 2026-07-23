@@ -1,4 +1,4 @@
-nb_drones: 100
+nb_drones: 5maek000
 
 start_hub: start 0 0 [color=green]
 hub: junction 1 0 [color=yellow-baht max_drones=2]

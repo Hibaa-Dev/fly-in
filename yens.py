@@ -17,7 +17,7 @@ class Yen:
         excessively inefficient options.
     """
 
-    K: int = 20  # Fixed number of candidate paths to compute.
+    K: int = 20
 
     def __init__(self, graph: Graph):
         """
@@ -36,7 +36,7 @@ class Yen:
         self.graph: Graph = graph
         self.djikstra = Dijkstra(self.graph)
 
-    def _path_cost(self, path: List[str]) -> float:
+    def path_cost(self, path: List[str]) -> float:
         """
         Computes the total zone-based cost of a path, summing each hub's
         movement cost along the route.
@@ -47,10 +47,8 @@ class Yen:
         Returns:
             The total cost of traversing every hub in the path.
         """
-        return sum(
-            self.graph.zone_lookup[hub].cost or 0.0
-            for hub in path
-        )
+        return sum(self.graph.zone_lookup[hub].cost or 0.0
+                   for hub in path)
 
     def find_shortets_paths(
         self,
@@ -85,11 +83,12 @@ class Yen:
 
         max_paths = self.K
 
+        # get the code of the shortest path
         best_distance = self.djikstra.distances[self.graph.end_hub_name]
         max_allowed_cost = best_distance * max_path
 
         A: List[List[str]] = [first_path]
-        A_costs: List[float] = [self._path_cost(first_path)]
+        A_costs: List[float] = [self.path_cost(first_path)]
         B: List[tuple[int | float, List[str]]] = []
 
         while len(A) < max_paths:
@@ -97,20 +96,20 @@ class Yen:
             # find the spur node:
             for i in range(len(previous_path) - 1):
                 spur_node = previous_path[i]
-                root_path = previous_path[:i + 1]
+                root_path = previous_path[: i + 1]
                 adjacent_copy = copy.deepcopy(self.graph.adjacency)
 
-                for locked_path in A:
-                    if (len(locked_path) > i + 1 and
-                            locked_path[:i + 1] == root_path):
-                        next_conn = locked_path[i + 1]
-                        # -----delete conn between spur node and next node
+                for lp in A:
+                    if len(lp) > i + 1 and lp[: i + 1] == root_path:
+                        next_conn = lp[i + 1]
+                        # delete conn between spur node and next node
                         adjacent_copy[spur_node] = [
-                            edge for edge in adjacent_copy[spur_node]
+                            edge
+                            for edge in adjacent_copy[spur_node]
                             if edge[0] != next_conn
                         ]
 
-                # Remove the visited node:
+                # Remove the visited node conn:
                 for node in root_path[:-1]:
                     adjacent_copy[node] = []
 
@@ -122,29 +121,27 @@ class Yen:
                 # get the paths:
                 if spur_path:
                     total_path = root_path[:-1] + spur_path
-                    total_cost: float = self._path_cost(total_path)
+                    total_cost: float = self.path_cost(total_path)
 
                     extart_B = [items[1] for items in B]
-                    if (total_cost <= max_allowed_cost
-                            and total_path not in A
-                            and total_path not in extart_B):
+                    if (
+                        total_cost <= max_allowed_cost
+                        and total_path not in A
+                        and total_path not in extart_B
+                    ):
                         B.append((total_cost, total_path))
 
             if not B:
                 break
-            # Rank remaining candidates by how close their cost is to the
-            # shortest path's cost (closest first). Since every candidate's
-            # cost is always >= best_distance, this is equivalent to
-            # sorting by raw cost ascending — spelled out explicitly here
-            # so the "pick closest to shortest" intent is clear in code.
+
             B.sort(key=lambda item: abs(item[0] - best_distance))
             best_cost, zone = B.pop(0)
             A.append(zone)
             A_costs.append(best_cost)
 
-        # Final ranking of everything collected: closest-to-shortest first.
         ranked = sorted(
+            # zip: combine the path with the cost
             zip(A, A_costs),
-            key=lambda pair: abs(pair[1] - best_distance)
+            key=lambda pair: abs(pair[1] - best_distance),
         )
         return [path for path, cost in ranked]
