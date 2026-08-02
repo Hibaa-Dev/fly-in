@@ -1,4 +1,5 @@
 from typing import List, Optional
+from conn import Connection
 
 
 class Drone:
@@ -23,7 +24,7 @@ class Drone:
         self.path_index: int = 0
         self.turns_remaining: int = 0
         self.transit_target: str | None = None
-        self.transit_conn: Optional[object] = None
+        self.transit_conn: Optional[Connection] = None
         self.is_in_transit: bool = False
 
     def get_next_zone(self) -> str | None:
@@ -53,7 +54,7 @@ class Drone:
             self.is_delivred = True
 
     def strat_transit(
-        self, target_zone: str, connection: object, travel_time: int
+        self, target_zone: str, connection: Connection, travel_time: int
     ) -> None:
         """Starts the drone's journey across a connection to a target zone.
 

@@ -76,8 +76,8 @@ class Parser:
         """
         is_empty = True
         for nb_line, line in lines:
-            line = line.strip()
-            if not line or line.startswith("#"):
+            line = line.split("#", 1)[0].strip()
+            if not line:
                 continue
             is_empty = False
             if line.count(":") != 1:
@@ -91,7 +91,7 @@ class Parser:
             if key != "nb_drones" or not value.isdigit() or int(value) <= 0:
                 raise ValueError(
                     f"Error on line {nb_line}: The first "
-                    "line must define the number of drones using"
+                    "line must define the number of drones using ```"
                     "nb_drones: <positive_integer>"
                 )
             self.map["nb_drones"] = int(value)
@@ -367,8 +367,8 @@ class Parser:
             lines = enumerate(file, start=1)
             self.check_first_line(lines)
             for nb_line, line in lines:
-                line = line.strip()
-                if not line or line.startswith("#"):
+                line = line.split("#", 1)[0].strip()
+                if not line:
                     continue
                 if line.count(":") != 1:
                     raise ValueError(

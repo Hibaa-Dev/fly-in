@@ -3,10 +3,6 @@ from hub import Hub
 from conn import Connection
 from graph import Graph
 import math
-import os
-
-os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
-
 import pygame
 import sys
 
@@ -17,7 +13,7 @@ class Display:
     every zone as a colored circle, every connection as a line between zones,
     and animates each drone's position frame-by-frame over time.
     """
-    def __init__(self, graph: Graph, frames: List[Dict[str, str]]):
+    def __init__(self, graph: Graph, frames: List[Dict[str, str | None]]):
         """
         Sets up the Pygame window and precomputes everything needed to
         render this specific map: the camera layout (scale + centering)
@@ -160,7 +156,8 @@ class Display:
         self.show_zone_labels = (len(self.zones) <= 25 and
                                  self.zone_radius >= 14)
 
-    def screen_position(self, x: float | int, y: float | int) -> Tuple[int, int]:
+    def screen_position(self, x: float | int,
+                        y: float | int) -> Tuple[int, int]:
         """
         Converts a single graph-space coordinate into a pixel position on
         the window, using the scale and offsets computed in compute_layout.
@@ -220,7 +217,7 @@ class Display:
                 rect = label.get_rect(center=pos)
                 self.screen.blit(label, rect)
 
-    def draw_drones(self, frame: Dict[str, str]) -> None:
+    def draw_drones(self, frame: Dict[str, str | None]) -> None:
         """
         Draws every drone for a single simulation frame at its current
         position: either centered on a zone (if resting) or at the

@@ -4,11 +4,13 @@ PIP = $(PYTHON) -m pip
 
 NAME = fly-in.py
 
+MAP = maps/medium/01_dead_end_trap.txt
+
 install:
 	$(PIP) install -r requirements.txt
 
 run:
-	$(PYTHON) $(NAME) mapefile.txt
+	$(PYTHON) $(NAME) $(MAP)
 
 debug:
 	$(PYTHON) -m pgb
@@ -24,3 +26,5 @@ lint:
 lint-strict:
 	flake8 .
 	mypy . --strict
+
+.PHONY: install run debug clean lint lint-strict

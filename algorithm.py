@@ -28,7 +28,8 @@ class Dijkstra:
                 the start.
         """
         self.zones: List[Hub] = graph.zones
-        self.adjacency: Dict[str, List[Tuple[str, Connection]]] = graph.adjacency
+        self.adjacency: Dict[str, List[Tuple[
+            str, Connection]]] = graph.adjacency
         self.graph: Graph = graph
         self.previous: Dict[str, str | None] = {}
         self.distances: Dict[str, int | float] = {}

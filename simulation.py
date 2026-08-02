@@ -10,7 +10,7 @@ class Simulation:
         self.drones: List[Drone] = []
         self.paths: List[List[str]] = paths
         self.output: List[str] = []
-        self.frames: List[Dict[str, str]] = []
+        self.frames: List[Dict[str, str | None]] = []
         self.total_turns: int = 0
 
         self.TERMINAL_COLORS: Dict[str, str] = {
@@ -63,13 +63,8 @@ class Simulation:
         self.default_color: str = '\033[37m'
         self.Drone_color: str = '\033[38;5;51m'
 
-    # def max_allowed_turns(self) -> int:
-
-    #     longest_path = max((len(path) for path in self.paths), default=1)
-    #     return max(1000, self.nb_drones * longest_path * 4)
-
     # ------------------get the color of the zone-------------------------
-    def get_color(self, color_name: str) -> str:
+    def get_color(self, color_name: str | None) -> str:
         if color_name is None:
             return self.default_color
         else:
@@ -79,19 +74,23 @@ class Simulation:
     # ---------------------------Format moove-------------------------------
     def format_move(
         self,
-        dron_id,
-        destination,
+        dron_id: str,
+        destination: str,
         is_connection: bool = False,
-    ):
+    ) -> str:
         reset = '\033[37m'
         drone_color = f"{self.Drone_color}{dron_id}{reset}"
+        if is_connection:
+            connection_color = self.get_color('gray')
+            target_color = f"{connection_color}{destination}{reset}"
 
-        if destination in self.graph.zone_lookup:
-            hub = self.graph.zone_lookup[destination]
-            zone_color: str = self.get_color(hub.color)
         else:
-            zone_color = self.get_color('teal')
-        target_color = f"{zone_color}{destination}{reset}"
+            if destination in self.graph.zone_lookup:
+                hub = self.graph.zone_lookup[destination]
+                zone_color: str = self.get_color(hub.color)
+            else:
+                zone_color = self.get_color('teal')
+            target_color = f"{zone_color}{destination}{reset}"
 
         return f"{drone_color}-{target_color}"
 
@@ -139,12 +138,19 @@ class Simulation:
         current_count = occupied.get(target_zone, 0)
         return current_count < max_drone
 
-    def run(self) -> None:
+    def run(self, max_turns: int | None = None) -> None:
+        """Runs the turn-based simulation until every drone is delivered.
+
+        Args:
+            max_turns: Optional cap used only for quickly rejecting bad
+                candidate path sets during path selection (see
+                Main.select_working_paths). Left as None (unlimited) for
+                the real, final simulation run.
+        """
         self.output = []
         self.frames = []
         turn: int = 0
-        # max_turns = self.max_allowed_turns()
-        initial_frame = {
+        initial_frame: Dict[str, str | None] = {
             drone.id: drone.current_zone
             for drone in self.drones
             if drone.current_zone is not None
@@ -152,9 +158,10 @@ class Simulation:
         self.frames.append(initial_frame)
 
         while not all(drone.is_delivred for drone in self.drones):
-            # if turn >= max_turns:
-            #     raise RuntimeError("Simulation exceeded safe turn limit")
-            frame = {}
+            if max_turns is not None and turn >= max_turns:
+                raise RuntimeError("Simulation exceeded test turn limit")
+
+            frame: Dict[str, str | None] = {}
             turn_moves: List[str] = []
             landed_this_turn: set[str] = set()
 
@@ -236,7 +243,7 @@ class Simulation:
                     )
 
             for drone in self.drones:
-                if drone.is_in_transit:
+                if drone.is_in_transit and drone.transit_conn is not None:
                     frame[drone.id] = drone.transit_conn.name
                 else:
                     frame[drone.id] = drone.current_zone
@@ -255,10 +262,6 @@ class Simulation:
                     )
                 self.output.append(" ".join(colored_moves))
             else:
-                # No drone moved and none in transit either — rather
-                # than raising, we record a quiet turn and let the
-                # loop continue (max_turns still guards against a
-                # true infinite loop).
                 self.output.append("")
 
             turn += 1
@@ -277,3 +280,4 @@ class Simulation:
         self.assign_path()
         self.run()
         self.print_output()
+        print("\033[H\033[J", end="\n")
