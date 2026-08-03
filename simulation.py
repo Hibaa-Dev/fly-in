@@ -14,7 +14,6 @@ class Simulation:
         self.output: List[str] = []
         self.frames: List[Dict[str, str | None]] = []
         self.total_turns: int = 0
-
         self.TERMINAL_COLORS: Dict[str, str] = {
             # Standard ANSI
             "black": "\033[30m",

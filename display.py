@@ -5,7 +5,6 @@ from graph import Graph
 import math
 import pygame
 import sys
-print("\033[H\033[J", end="\n")
 
 
 class Display:
