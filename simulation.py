@@ -4,7 +4,9 @@ from drone import Drone
 
 
 class Simulation:
-    def __init__(self, graph: Graph, paths: List[List[str]]):
+    def __init__(
+        self, graph: Graph, paths: List[List[str]],
+    ) -> None:
         self.graph: Graph = graph
         self.nb_drones: int = graph.nb_drones
         self.drones: List[Drone] = []
@@ -139,14 +141,6 @@ class Simulation:
         return current_count < max_drone
 
     def run(self, max_turns: int | None = None) -> None:
-        """Runs the turn-based simulation until every drone is delivered.
-
-        Args:
-            max_turns: Optional cap used only for quickly rejecting bad
-                candidate path sets during path selection (see
-                Main.select_working_paths). Left as None (unlimited) for
-                the real, final simulation run.
-        """
         self.output = []
         self.frames = []
         turn: int = 0
@@ -198,7 +192,6 @@ class Simulation:
                 if not next_zone:
                     continue
 
-                # Find connection inline lookup
                 connection = None
                 neighbors = self.graph.adjacency.get(
                     drone.current_zone, []
@@ -221,13 +214,9 @@ class Simulation:
                     current_zone = drone.current_zone
 
                     if travel_time == 0:
-                        # Normal move: resolves instantly, drone lands
-                        # this same turn
                         drone.move_forward()
                         turn_moves.append(f"{drone.id}-{next_zone}")
                     else:
-                        # Restricted move: genuinely spans 2 turns,
-                        # use transit tracking
                         drone.strat_transit(
                             next_zone, connection, travel_time
                         )
@@ -249,8 +238,6 @@ class Simulation:
                     frame[drone.id] = drone.current_zone
             self.frames.append(frame)
 
-            # Phase 4: Finalize turn tracking
-            # (Always append to keep turn counts synchronized!)
             if turn_moves:
                 turn_moves.sort(key=lambda x: int(x.split("-")[0][1:]))
                 colored_moves: List[str] = []
@@ -269,8 +256,6 @@ class Simulation:
         self.total_turns = turn
 
     def print_output(self) -> None:
-        # Only print lines that actually contain movements,
-        # omitting stationary turns
         for line in self.output:
             if line.strip():
                 print(line)
@@ -280,4 +265,3 @@ class Simulation:
         self.assign_path()
         self.run()
         self.print_output()
-        print("\033[H\033[J", end="\n")

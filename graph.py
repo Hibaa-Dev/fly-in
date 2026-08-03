@@ -69,7 +69,7 @@ class Graph:
             metadata = conn_row["metadata"]
 
             conn_obj: Connection = Connection(
-                name=src + "_" + trg,
+                name=src + "-" + trg,
                 source=src,
                 target=trg,
                 max_link_capacity=metadata["max_link_capacity"],

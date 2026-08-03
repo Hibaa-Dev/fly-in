@@ -5,6 +5,7 @@ from graph import Graph
 import math
 import pygame
 import sys
+print("\033[H\033[J", end="\n")
 
 
 class Display:
@@ -257,7 +258,9 @@ class Display:
             stack_index = occupied_positions.get(pos, 0)
             occupied_positions[pos] = stack_index + 1
             if stack_index > 0:
+                # devide the circle to 45
                 angle = stack_index * 2 * math.pi / 8
+                # distance from the center
                 spread = self.drone_radius * 1.2
                 pos = (
                     int(pos[0] + math.cos(angle) * spread),
@@ -324,7 +327,7 @@ class Display:
 
                 if self.frames:
                     self.draw_drones(self.frames[fram_index])
-
+                # Show the new image to the user.
                 pygame.display.flip()
                 clock.tick(60)
 

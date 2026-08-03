@@ -62,8 +62,8 @@ class Main:
         return best_paths
 
     def main(self) -> None:
-        if len(sys.argv) < 2:
-            print("Usage: python main.py <map_file.txt>")
+        if len(sys.argv) > 2:
+            raise OSError("Error: Usage: python main.py <map_file.txt>")
             return
 
         # 2. Build Graph
@@ -84,8 +84,8 @@ class Main:
 
 
 if __name__ == "__main__":
-    main = Main()
     try:
+        main = Main()
         main.main()
     except Exception as e:
         print(e)

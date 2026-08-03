@@ -91,8 +91,8 @@ class Parser:
             if key != "nb_drones" or not value.isdigit() or int(value) <= 0:
                 raise ValueError(
                     f"Error on line {nb_line}: The first "
-                    "line must define the number of drones using ```"
-                    "nb_drones: <positive_integer>"
+                    "line must define the number of drones using "
+                    "nb_drones: <a strictly positive integer>"
                 )
             self.map["nb_drones"] = int(value)
             break
@@ -170,6 +170,7 @@ class Parser:
         self,
         metadata: str,
         nb_line: int,
+        hub_type: str,
     ) -> Dict[str, Any]:
         """Parses and sanitizes explicit configuration attributes
             enclosed in hub brackets.
@@ -184,6 +185,9 @@ class Parser:
                 anchors.
             nb_line (int): Current processing line number for verbose error
                 logging.
+            hub_type (str): The hub's declared type ('hub', 'start_hub', or
+                'end_hub'). start_hub and end_hub accept any number of
+                drones, so max_drones=0 is only valid for those two.
 
         Returns:
             Dict[str, Any]: A sanitized dictionary containing valid overrides
@@ -234,10 +238,18 @@ class Parser:
                         "a valid single-word strings"
                     )
             if key == "max_drones":
-                if not value.isdigit() or int(value) <= 0:
+                if not value.isdigit():
                     raise ValueError(
                         f"Error on line {nb_line}: max_drones "
-                        "value must be positive integer"
+                        "value must be a non-negative integer"
+                    )
+                min_allowed = 0 if hub_type in (
+                    "start_hub", "end_hub"
+                ) else 1
+                if int(value) < min_allowed:
+                    raise ValueError(
+                        f"Error on line {nb_line}: max_drones "
+                        f"value must be a strictly positive integer"
                     )
                 parsed_meta[key] = int(value)
                 continue
@@ -350,7 +362,7 @@ class Parser:
             if not value.isdigit() or int(value) <= 0:
                 raise ValueError(
                     f"Error on line {nb_line}: max_link_capacity "
-                    "value must be positive integer"
+                    "value must be a strictly positive integer"
                 )
             parsed_meta[key] = int(value)
 
@@ -398,7 +410,9 @@ class Parser:
                     }
                     if hub_data["attr"]:
                         hub_record["metadata"].update(
-                            self.check_hub_metadata(hub_data["attr"], nb_line)
+                            self.check_hub_metadata(
+                                hub_data["attr"], nb_line, key
+                            )
                         )
                     self.map["hubs"].append(hub_record)
 

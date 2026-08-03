@@ -123,6 +123,7 @@ class Yen:
                     total_path = root_path[:-1] + spur_path
                     total_cost: float = self.path_cost(total_path)
 
+                    # extart_B = [["A","B","D"], ["A","C","D"]]
                     extart_B = [items[1] for items in B]
                     if (
                         total_cost <= max_allowed_cost
