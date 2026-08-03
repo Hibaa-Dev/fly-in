@@ -170,10 +170,12 @@ class Simulation:
                             f"{drone.id}-{drone.current_zone}"
                         )
 
-            # Phase 2: Compute scoreboard & simulate departures
+            # Phase 2: Recomputes how many drones currently sit
+            # in each hub, after Phase 1
             occupied = self.get_occupy_map()
 
-            # Phase 3: Move resting drones
+            # Phase 3:
+            # gives priority to drones closest to finishing
             drones_by_progress = sorted(
                 self.drones,
                 key=lambda item: item.path_index,
@@ -191,7 +193,7 @@ class Simulation:
                 next_zone = drone.get_next_zone()
                 if not next_zone:
                     continue
-
+                # get the conn onj of the next zone
                 connection = None
                 neighbors = self.graph.adjacency.get(
                     drone.current_zone, []

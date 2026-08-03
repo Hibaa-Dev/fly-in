@@ -10,6 +10,8 @@ from display import Display
 class Main:
 
     def __init__(self) -> None:
+        if len(sys.argv) != 2:
+            raise OSError("Error: Usage: python fly-in.py <map_file.txt>")
         parser = Parser(sys.argv[1])
         self.map_file = parser.check_input_file()
 
@@ -62,23 +64,20 @@ class Main:
         return best_paths
 
     def main(self) -> None:
-        if len(sys.argv) > 2:
-            raise OSError("Error: Usage: python main.py <map_file.txt>")
-            return
 
-        # 2. Build Graph
+        # 1. Build Graph
         graph = self.build_graph()
 
-        # 3. Yen's K-Shortest Paths
+        # 2. Yen's K-Shortest Paths
         yen = Yen(graph)
         paths = yen.find_shortets_paths()
         paths = self.select_working_paths(lambda: self.build_graph(), paths)
 
-        # 4. Run Simulation (real run: no cap, runs to true completion)
+        # 3. Run Simulation (real run: no cap, runs to true completion)
         sim = Simulation(graph, paths)
         sim.simulation()
 
-        # 5. Pygame Display
+        # 4. Pygame Display
         disp = Display(graph, sim.frames)
         disp._draw()
 
